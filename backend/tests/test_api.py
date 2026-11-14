@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.main import app, simulator, store
@@ -22,7 +24,9 @@ def test_simulator_ingestion_and_alerts():
         assert client.get("/api/alerts").json()
 
 
-def test_validation_detection_and_test_alert():
+def test_validation_detection_and_test_alert(monkeypatch):
+    monkeypatch.delenv("GEOLOGICAL_YOLO_WEIGHTS", raising=False)
+    monkeypatch.setattr("app.services.vision.DEMO_WEIGHTS", Path("/nonexistent/geoguards-demo-weights.pt"))
     with TestClient(app) as client:
         assert client.post("/api/sensors", json={"zone_id": "north_wall"}).status_code == 422
         assert client.post("/api/detect", files={"file": ("x.txt", b"text", "text/plain")}).status_code == 415

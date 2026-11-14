@@ -10,7 +10,7 @@ from .config import DATABASE_NAME, MONGODB_URL
 
 
 class Store:
-    collections = ("sensor_readings", "predictions", "alerts", "mine_zones", "detection_results", "simulation_sessions")
+    collections = ("sensor_readings", "predictions", "alerts", "mine_zones", "detection_results", "simulation_sessions", "terrain_analyses", "ml_assessments")
 
     def __init__(self, url: str | None = None) -> None:
         self.url = MONGODB_URL if url is None else url
@@ -44,6 +44,14 @@ class Store:
                 rows = [dict(x) for x in self.memory[collection] if not zone_id or x.get("zone_id") == zone_id]
             rows = sorted(rows, key=lambda x: x.get("timestamp", ""), reverse=True)[:limit]
         return rows
+
+    def has_demo_reading(self, zone_id: str, timestamp: str) -> bool:
+        query = {"zone_id": zone_id, "timestamp": timestamp, "dataset_provenance": "synthetic_demo_only"}
+        if self.db is not None:
+            return self.db["sensor_readings"].find_one(query, {"_id": 1}) is not None
+        with self.lock:
+            return any(all(row.get(key) == value for key, value in query.items())
+                       for row in self.memory["sensor_readings"])
 
     def update(self, collection: str, item_id: str, changes: dict[str, Any]) -> bool:
         if self.db is not None:

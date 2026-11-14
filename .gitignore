@@ -7,3 +7,7 @@ dist/
 *.pyc
 models/*.joblib
 models/*.pt
+backend/models/*.joblib
+backend/models/active.json
+backend/vision_models/*.pt
+backend/models/comparison.json

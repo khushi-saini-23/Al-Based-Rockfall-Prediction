@@ -1,0 +1,15 @@
+{
+  "data_dir": "../../datasets/real",
+  "horizon_hours": 6,
+  "max_source_age_hours": 2,
+  "rainfall_interval_hours": 1,
+  "vibration_event_threshold_mm_s": 6.0,
+  "seed": 42,
+  "validation_fraction": 0.2,
+  "test_fraction": 0.2,
+  "decision_threshold": null,
+  "decision_threshold_rationale": null,
+  "feature_names": null,
+  "model_version": "research-v1",
+  "reviewed_real_data": false
+}

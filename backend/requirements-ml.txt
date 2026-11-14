@@ -1,0 +1,7 @@
+-r requirements.txt
+numpy>=2.2,<3
+pandas>=2.2,<4
+scikit-learn>=1.6,<2
+xgboost>=3,<4
+joblib>=1.4,<2
+# Optional for individual TreeSHAP explanations: pip install shap
