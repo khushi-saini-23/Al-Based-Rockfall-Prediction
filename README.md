@@ -29,6 +29,63 @@ To test the supplied CSVs, open **Sensor Data** and select **Load supplied CSV s
 
 Run backend tests with `cd backend && .venv/bin/python -m pytest -q tests`. Run frontend checks with `cd frontend && npm run build`. Optional research ML dependencies and training gates are documented in [docs/ML_PIPELINE.md](docs/ML_PIPELINE.md).
 
+## Architecture
+
+```mermaid
+flowchart LR
+    User[Browser] --> Frontend[React and Vite frontend]
+    Frontend -->|/api requests| API[FastAPI backend]
+    API --> Sensors[Sensor ingestion and simulator]
+    API --> Demo[Demo CSV loader and alignment]
+    Demo --> CSV[(Five separate synthetic CSV files)]
+    Sensors --> Rules[Provisional DEMO_RULES assessment]
+    Demo --> Rules
+    Rules --> Alerts[Dashboard alerts and recommendations]
+    API --> Terrain[ESRI ASCII DEM analysis]
+    API --> Vision[Optional YOLO image detection]
+    API --> Research[Optional research ML endpoints]
+    API --> Store{Storage configured?}
+    Store -->|MONGODB_URL set| Mongo[(MongoDB)]
+    Store -->|Otherwise| Memory[(Volatile memory)]
+```
+
+The dashboard uses provisional rules by default. Research ML endpoints do not imply that a validated rockfall model is installed. The five demo datasets remain separate and are aligned internally by timestamp and location ID.
+
+## Deploy on Render
+
+Deploy the frontend and backend as **two services from the same GitHub repository**. Push the version you want to deploy to the selected branch first. The basic deployment needs no source-code changes.
+
+1. In Render, choose **New → Web Service**, connect this repository, and select the branch to deploy. Use **Python 3** and the **Free** instance type if this is a demonstration.
+
+   | Backend setting | Value |
+   | --- | --- |
+   | Root Directory | Leave blank (repository root) |
+   | Build Command | `pip install -r backend/requirements.txt` |
+   | Start Command | `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+
+   Leave Root Directory blank: the backend reads `datasets/demo/` from the repository root. A backend-only root directory would exclude those files on Render. Once deployed, open `https://YOUR-BACKEND.onrender.com/api/health` and confirm `status` is `ok`. Save the backend URL.
+
+2. Choose **New → Static Site**, connect the same repository and branch, and set:
+
+   | Frontend setting | Value |
+   | --- | --- |
+   | Root Directory | `frontend` |
+   | Build Command | `npm ci && npm run build` |
+   | Publish Directory | `dist` |
+   | Environment variable | `VITE_API_URL=https://YOUR-BACKEND.onrender.com` |
+
+   Use the backend origin without `/api` or a trailing slash. `VITE_API_URL` is included in the frontend build, so redeploy the static site after changing it. Save the frontend URL.
+
+3. In the backend Web Service's **Environment** settings, add `FRONTEND_URL=https://YOUR-FRONTEND.onrender.com` using the exact static-site origin, without a trailing slash. Redeploy the backend so its CORS setting accepts browser requests from the frontend.
+
+4. Verify the frontend, `/api/health`, `/api/demo/datasets`, and `/docs` on the backend URL. In **Sensor Data**, load the supplied CSV sample and confirm readings and history appear. If browser requests fail with a CORS error, compare `FRONTEND_URL` with the frontend address exactly. If demo files are reported missing, check that the backend Root Directory is blank and that all five CSVs were pushed to the repository.
+
+For durable history, configure an external MongoDB service and set its connection string as the backend's `MONGODB_URL` environment variable. `DATABASE_NAME` defaults to `geoguards`. Keep credentials in Render environment settings, never in Git. Without MongoDB, readings and alerts are held in memory and reset when the service restarts; if MongoDB is configured but unreachable, the backend fails startup rather than switching silently to memory.
+
+On Render's Free plan, the backend spins down after inactivity and can take about a minute to wake. The frontend currently times out API calls after eight seconds; before a live demonstration, open the backend `/api/health` URL and wait for it to respond, then refresh the frontend. Render's free filesystem is temporary, so uploaded files and locally installed model weights do not persist across restarts. The basic backend build does not install optional YOLO dependencies or weights; image detection will show its unavailable state. See [Render's free-service limits](https://render.com/docs/free) for current plan details.
+
+This deployment uses only synthetic demonstration data and is not a mine safety system. The API has no authentication; add access controls before connecting real data or making the service available for operational use.
+
 ## What is implemented
 
 - Warm, responsive React monitoring workspace with sidebar navigation for dashboard, map, alerts, risk analysis, sensors, terrain analysis, image detection, reports and settings. The dashboard map is a self-contained fictional zone schematic, and Live Map has an interactive fictional 3D pit model. Neither is surveyed mine geometry.
@@ -55,4 +112,4 @@ To replace the baseline with ML, obtain genuine measurements and independently v
 
 ## Prototype limitations
 
-The thresholds in `backend/app/services/risk.py` are invented for a UI demonstration and need qualified geotechnical review. Risk percentages are zone distributions, not event probabilities. The app has no authentication and must not be exposed to the public internet. The simulator uses fictional zones and coordinates. Notification delivery is intentionally disabled, even if credentials are set.
+The thresholds in `backend/app/services/risk.py` are invented for a UI demonstration and need qualified geotechnical review. Risk percentages are zone distributions, not event probabilities. The app has no authentication; a public deployment must use synthetic, non-sensitive demonstration data only. The simulator uses fictional zones and coordinates. Notification delivery is intentionally disabled, even if credentials are set.
