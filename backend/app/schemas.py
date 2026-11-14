@@ -31,3 +31,10 @@ class ScenarioRequest(BaseModel):
 class TestAlertRequest(BaseModel):
     zone_id: str = Field(default="north_wall", min_length=1, max_length=40)
     risk_level: Literal["MEDIUM", "HIGH", "CRITICAL"] = "HIGH"
+
+
+class MLFeatureRequest(BaseModel):
+    location_id: str = Field(min_length=1, max_length=40)
+    input_timestamp: datetime
+    data_provenance: Literal["real_observed"]
+    features: dict[str, float | None]

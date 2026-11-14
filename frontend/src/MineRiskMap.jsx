@@ -44,7 +44,21 @@ const colors = {
 
 function FitMap() {
   const map = useMap()
-  useEffect(() => { map.fitBounds([[0, 0], [100, 200]], { padding: [10, 10] }) }, [map])
+  useEffect(() => {
+    const container = map.getContainer()
+    let frame
+    const fit = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        map.invalidateSize({ pan: false, animate: false })
+        map.fitBounds([[0, 0], [100, 200]], { padding: [18, 18], animate: false })
+      })
+    }
+    const observer = new ResizeObserver(fit)
+    observer.observe(container)
+    fit()
+    return () => { observer.disconnect(); cancelAnimationFrame(frame) }
+  }, [map])
   return null
 }
 
@@ -65,7 +79,7 @@ export default function MineRiskMap({ zones, predictions, selectedZone, onSelect
         {showZones && areas.map(area => zoneShapes[area.zone_id] && <Polygon key={area.zone_id} positions={zoneShapes[area.zone_id]} pathOptions={colors[area.risk_level]} interactive={false}/>)}
         {showZones && zones.map(zone => {
           const risk = predictions.find(p => p.zone_id === zone.id)?.risk_level || 'NO DATA'
-          return <CircleMarker key={zone.id} center={[100 - zone.y, zone.x * 2]} radius={selectedZone === zone.id ? 9 : 7} pathOptions={{ color: '#fff6e8', weight: 2.5, fillColor: risk === 'HIGH' ? '#bb4d36' : risk === 'MEDIUM' ? '#d99d50' : risk === 'LOW' ? '#5f8c67' : '#81766a', fillOpacity: 1 }} eventHandlers={{ click: () => onSelect(zone.id) }}><Tooltip permanent direction="right" offset={[7, 0]} className="zone-map-tooltip">{zone.name}</Tooltip></CircleMarker>
+          return <CircleMarker key={zone.id} center={[100 - zone.y, zone.x * 2]} radius={selectedZone === zone.id ? 11 : 9} pathOptions={{ color: '#fff6e8', weight: 2.5, fillColor: risk === 'HIGH' ? '#bb4d36' : risk === 'MEDIUM' ? '#d99d50' : risk === 'LOW' ? '#5f8c67' : '#81766a', fillOpacity: 1 }} eventHandlers={{ click: () => onSelect(zone.id) }}><Tooltip permanent={selectedZone === zone.id || !zone.id.startsWith('LOC_')} direction="auto" offset={[7, 0]} className="zone-map-tooltip">{zone.name}</Tooltip></CircleMarker>
         })}
         <ZoomControl position="bottomright"/>
       </MapContainer>
